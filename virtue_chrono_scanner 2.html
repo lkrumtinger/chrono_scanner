@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtue Chrono Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e13; --surface: #111720; --surface2: #1a2233; --border: #1e2d45;
+    --accent: #00e5ff; --accent2: #ff6b35; --green: #00ff9d; --red: #ff3d57;
+    --yellow: #ffd166; --text: #e8f0fe; --muted: #5a7a9a;
+    --font-display: 'Rajdhani', sans-serif; --font-mono: 'Share Tech Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-display); min-height: 100vh; overflow-x: hidden; }
+  .scanline { position:fixed; top:0; left:0; width:100%; height:100%; background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,255,0.015) 2px,rgba(0,229,255,0.015) 4px); pointer-events:none; z-index:0; }
+  .header { background:var(--surface); border-bottom:1px solid var(--border); padding:1rem 1.25rem; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:10; }
+  .logo { font-size:20px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent); }
+  .logo span { color:var(--text); }
+  .signal-indicator { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); letter-spacing:0.08em; font-family:var(--font-mono); }
+  .dot { width:8px; height:8px; border-radius:50%; background:var(--muted); transition:background 0.3s; }
+  .dot.active { background:var(--green); box-shadow:0 0 8px var(--green); animation:blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .content { padding:1rem; position:relative; z-index:1; max-width:600px; margin:0 auto; }
+  .notice { background:rgba(255,209,102,0.08); border:1px solid rgba(255,209,102,0.25); border-radius:8px; padding:10px 14px; font-size:13px; color:var(--yellow); margin-bottom:1rem; line-height:1.6; }
+  .big-fps { text-align:center; padding:1.5rem 1rem; background:var(--surface); border:1px solid var(--border); border-radius:12px; margin-bottom:1rem; position:relative; overflow:hidden; }
+  .big-fps::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); animation:scan 2s infinite; }
+  @keyframes scan { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+  .fps-label { font-size:11px; letter-spacing:0.15em; color:var(--muted); text-transform:uppercase; margin-bottom:4px; }
+  .fps-number { font-size:72px; font-weight:700; line-height:1; color:var(--accent); font-family:var(--font-mono); transition:color 0.3s; }
+  .fps-unit { font-size:18px; color:var(--muted); letter-spacing:0.1em; margin-top:2px; }
+  .stats-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:1rem; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:0.75rem 1rem; }
+  .stat-card .label { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+  .stat-card .value { font-size:26px; font-weight:600; color:var(--text); font-family:var(--font-mono); }
+  .stat-card .value.up { color:var(--green); } .stat-card .value.down { color:var(--red); }
+  .controls { display:flex; gap:8px; margin-bottom:1rem; flex-wrap:wrap; }
+  .btn { flex:1; min-width:80px; padding:12px 16px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-family:var(--font-display); font-size:14px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; transition:all 0.15s; }
+  .btn:active { transform:scale(0.97); } .btn:disabled { opacity:0.35; cursor:not-allowed; }
+  .btn-start { border-color:var(--green); color:var(--green); }
+  .btn-stop { border-color:var(--red); color:var(--red); }
+  .btn-export { border-color:var(--accent); color:var(--accent); }
+  .btn-clear { font-size:12px; flex:0; }
+  .status-bar { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 14px; font-family:var(--font-mono); font-size:12px; color:var(--muted); margin-bottom:1rem; min-height:38px; line-height:1.5; }
+  .status-bar .ok { color:var(--green); } .status-bar .err { color:var(--red); }
+  .raw-panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:0.75rem 1rem; margin-bottom:1rem; }
+  .raw-panel .panel-title { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .raw-bytes { font-family:var(--font-mono); font-size:12px; color:var(--muted); word-break:break-all; line-height:1.7; }
+  .raw-bytes .hl { color:var(--accent); font-weight:bold; }
+  .raw-bytes .hl-fps { color:var(--green); font-weight:bold; }
+  .log-panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:2rem; }
+  .log-header-row { display:grid; grid-template-columns:36px 56px 64px 56px 1fr; gap:6px; padding:8px 12px; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border); background:var(--surface2); }
+  .log-row { display:grid; grid-template-columns:36px 56px 64px 56px 1fr; gap:6px; padding:9px 12px; border-bottom:1px solid rgba(30,45,69,0.5); font-size:13px; align-items:center; animation:fadeIn 0.2s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+  .log-row:last-child { border-bottom:none; }
+  .fps-pill { display:inline-block; padding:2px 8px; border-radius:99px; font-family:var(--font-mono); font-size:13px; font-weight:600; }
+  .fps-hot { background:rgba(255,107,53,0.15); color:var(--accent2); border:1px solid rgba(255,107,53,0.3); }
+  .fps-ok { background:rgba(0,255,157,0.1); color:var(--green); border:1px solid rgba(0,255,157,0.25); }
+  .fps-cold { background:rgba(0,229,255,0.1); color:var(--accent); border:1px solid rgba(0,229,255,0.25); }
+  .log-scroll { max-height:320px; overflow-y:auto; }
+  .empty { text-align:center; padding:2.5rem 1rem; color:var(--muted); font-size:14px; letter-spacing:0.05em; }
+  .mono { font-family:var(--font-mono); }
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<div class="header">
+  <div class="logo">VIRTUE<span> CHRONO</span></div>
+  <div class="signal-indicator">
+    <div class="dot" id="dot"></div>
+    <span id="sig-label">OFFLINE</span>
+  </div>
+</div>
+<div class="content">
+
+  <div class="notice">
+    Updated: now shows <strong>all</strong> nearby BLE devices in the picker. Select your Virtue Chrono — it may show as an unnamed or unknown device.
+  </div>
+
+  <div class="big-fps">
+    <div class="fps-label">Velocity</div>
+    <div class="fps-number" id="big-fps">—</div>
+    <div class="fps-unit">FPS</div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="label">Average FPS</div><div class="value" id="s-avg">—</div></div>
+    <div class="stat-card"><div class="label">± Variance</div><div class="value" id="s-var">—</div></div>
+    <div class="stat-card"><div class="label">BPS</div><div class="value" id="s-bps">—</div></div>
+    <div class="stat-card"><div class="label">Shots</div><div class="value" id="s-count">0</div></div>
+    <div class="stat-card"><div class="label">High FPS</div><div class="value" id="s-high">—</div></div>
+    <div class="stat-card"><div class="label">Low FPS</div><div class="value" id="s-low">—</div></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-start" id="btn-scan" onclick="startScan()">Scan</button>
+    <button class="btn btn-stop" id="btn-stop" onclick="stopScan()" disabled>Stop</button>
+    <button class="btn btn-export" onclick="exportLog()">Export</button>
+    <button class="btn btn-clear" onclick="clearAll()">Clear</button>
+  </div>
+
+  <div class="status-bar" id="status">Ready — tap Scan to begin</div>
+
+  <div class="raw-panel">
+    <div class="panel-title">Raw packet decode</div>
+    <div class="raw-bytes" id="raw">Waiting for first packet...</div>
+  </div>
+
+  <div class="log-panel">
+    <div class="log-header-row">
+      <span>#</span><span>Time</span><span>FPS</span><span>± prev</span><span>Raw bytes</span>
+    </div>
+    <div class="log-scroll" id="log-scroll">
+      <div class="empty" id="empty-msg">No shots yet — start scanning and fire your marker</div>
+    </div>
+  </div>
+
+</div>
+<script>
+let device=null, packets=[], allFps=[], shotTimes=[];
+
+function setStatus(msg,state){
+  document.getElementById('status').innerHTML='<span class="'+(state==='ok'?'ok':state==='err'?'err':'')+'">'+msg+'</span>';
+  const dot=document.getElementById('dot'), sig=document.getElementById('sig-label');
+  if(state==='ok'){dot.className='dot active';sig.textContent='LIVE';}
+  else{dot.className='dot';sig.textContent=state==='err'?'ERROR':'OFFLINE';}
+}
+
+function bytesToHex(buf){
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' ');
+}
+
+function parsePayload(buf){
+  if(!buf||buf.byteLength<2)return null;
+  const arr=new Uint8Array(buf);
+  let fps=null,note='';
+  for(let i=0;i<arr.length-1;i++){
+    const le=(arr[i+1]<<8)|arr[i];
+    const be=(arr[i]<<8)|arr[i+1];
+    if(le>=200&&le<=400){fps=le;note='bytes['+i+'-'+(i+1)+'] LE';break;}
+    if(be>=200&&be<=400){fps=be;note='bytes['+i+'-'+(i+1)+'] BE';break;}
+  }
+  return{arr,fps,note};
+}
+
+function fpsClass(fps){return fps>295?'fps-hot':fps<280?'fps-cold':'fps-ok';}
+
+function updateStats(){
+  if(!allFps.length)return;
+  const last=allFps[allFps.length-1];
+  const avg=allFps.reduce((a,b)=>a+b,0)/allFps.length;
+  const variance=allFps.length>1?last-allFps[allFps.length-2]:null;
+  document.getElementById('big-fps').textContent=last;
+  document.getElementById('big-fps').style.color=last>295?'var(--accent2)':last<280?'var(--accent)':'var(--green)';
+  document.getElementById('s-avg').textContent=avg.toFixed(1);
+  document.getElementById('s-var').textContent=variance!==null?(variance>=0?'+':'')+variance:'—';
+  document.getElementById('s-var').className='value'+(variance>0?' up':variance<0?' down':'');
+  document.getElementById('s-high').textContent=Math.max(...allFps);
+  document.getElementById('s-low').textContent=Math.min(...allFps);
+  document.getElementById('s-count').textContent=allFps.length;
+  if(shotTimes.length>=2){
+    const intervals=[];
+    for(let i=1;i<shotTimes.length;i++)intervals.push(shotTimes[i]-shotTimes[i-1]);
+    const avgI=intervals.reduce((a,b)=>a+b,0)/intervals.length;
+    document.getElementById('s-bps').textContent=(1000/avgI).toFixed(2);
+  }
+}
+
+function handlePacket(buf,ts,companyId){
+  const hex=bytesToHex(buf);
+  const p=parsePayload(buf);
+  const cHex=companyId!==undefined?'0x'+companyId.toString(16).toUpperCase().padStart(4,'0'):'—';
+  let rawHtml='Company: <span class="hl">'+cHex+'</span> &nbsp; Bytes: <span class="hl">'+hex+'</span>';
+  if(p&&p.fps) rawHtml+='<br>FPS decode: <span class="hl-fps">'+p.fps+' fps ('+p.note+')</span>';
+  else rawHtml+='<br><span style="color:var(--yellow)">No value in 200–400 range found</span>';
+  document.getElementById('raw').innerHTML=rawHtml;
+  packets.push({ts,hex,companyId:cHex,fps:p?.fps});
+  if(p&&p.fps){
+    const prevFps=allFps.length?allFps[allFps.length-1]:null;
+    allFps.push(p.fps); shotTimes.push(Date.now());
+    const variance=prevFps!==null?p.fps-prevFps:null;
+    const varStr=variance!==null?(variance>=0?'+':'')+variance:'—';
+    const t=new Date(ts*1000);
+    const timeStr=t.toLocaleTimeString('en-US',{hour12:false});
+    document.getElementById('empty-msg')&&document.getElementById('empty-msg').remove();
+    const row=document.createElement('div');
+    row.className='log-row';
+    row.innerHTML='<span class="mono" style="color:var(--muted)">'+allFps.length+'</span>'+
+      '<span class="mono" style="font-size:11px;color:var(--muted)">'+timeStr+'</span>'+
+      '<span><span class="fps-pill '+fpsClass(p.fps)+'">'+p.fps+'</span></span>'+
+      '<span class="mono" style="color:'+(variance>0?'var(--green)':variance<0?'var(--red)':'var(--muted)')+'">'+varStr+'</span>'+
+      '<span class="mono" style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+hex.substring(0,28)+'…</span>';
+    const scroll=document.getElementById('log-scroll');
+    scroll.insertBefore(row,scroll.firstChild);
+    updateStats();
+  }
+}
+
+async function startScan(){
+  if(!navigator.bluetooth){setStatus('Web Bluetooth not available — open in Bluefy','err');return;}
+  try{
+    setStatus('Opening device picker — select your Virtue Chrono...','');
+    document.getElementById('btn-scan').disabled=true;
+    const d=await navigator.bluetooth.requestDevice({
+      acceptAllDevices:true,
+      optionalServices:[]
+    });
+    device=d;
+    setStatus('<span class="ok">Watching: '+(d.name||'Unknown device')+' — fire your marker!</span>','ok');
+    document.getElementById('btn-stop').disabled=false;
+    d.addEventListener('advertisementreceived',e=>{
+      if(e.manufacturerData&&e.manufacturerData.size>0){
+        e.manufacturerData.forEach((value,key)=>handlePacket(value.buffer,e.timeStamp/1000,key));
+      } else {
+        document.getElementById('raw').innerHTML='<span style="color:var(--yellow)">Packet received — no manufacturer data. Try firing a shot.</span>';
+        packets.push({ts:e.timeStamp/1000,hex:'(no mfr data)',companyId:'—',fps:null});
+      }
+    });
+    await d.watchAdvertisements();
+  }catch(err){
+    setStatus('Error: '+err.message,'err');
+    document.getElementById('btn-scan').disabled=false;
+  }
+}
+
+function stopScan(){
+  if(device){try{device.unwatchAdvertisements();}catch(e){}}
+  setStatus('Stopped. '+packets.length+' packets captured.','');
+  document.getElementById('btn-scan').disabled=false;
+  document.getElementById('btn-stop').disabled=true;
+}
+
+function clearAll(){
+  packets=[];allFps=[];shotTimes=[];
+  document.getElementById('log-scroll').innerHTML='<div class="empty" id="empty-msg">No shots yet — start scanning and fire your marker</div>';
+  document.getElementById('raw').textContent='Waiting for first packet...';
+  document.getElementById('big-fps').textContent='—';
+  document.getElementById('big-fps').style.color='var(--accent)';
+  ['s-avg','s-var','s-bps','s-high','s-low'].forEach(id=>document.getElementById(id).textContent='—');
+  document.getElementById('s-count').textContent='0';
+}
+
+function exportLog(){
+  if(!packets.length){alert('No packets to export yet.');return;}
+  const rows=['shot,timestamp,company_id,hex,fps'];
+  packets.forEach((p,i)=>rows.push([i+1,p.ts,p.companyId,'"'+p.hex+'"',p.fps||''].join(',')));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
+  a.download='virtue_chrono_'+Date.now()+'.csv';
+  a.click();
+}
+</script>
+</body>
+</html>
