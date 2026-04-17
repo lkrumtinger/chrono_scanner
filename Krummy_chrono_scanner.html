@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtue Chrono</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0e13; --surface:#111720; --surface2:#1a2233; --border:#1e2d45;
+    --accent:#00e5ff; --accent2:#ff6b35; --green:#00ff9d; --red:#ff3d57;
+    --yellow:#ffd166; --text:#e8f0fe; --muted:#5a7a9a;
+    --font-d:'Rajdhani',sans-serif; --font-m:'Share Tech Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--font-d);min-height:100vh;overflow-x:hidden;}
+  .scanline{position:fixed;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,255,0.012) 2px,rgba(0,229,255,0.012) 4px);pointer-events:none;z-index:0;}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:0.9rem 1.25rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+  .logo{font-size:19px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);}
+  .logo span{color:var(--text);}
+  .sig{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);font-family:var(--font-m);letter-spacing:0.08em;}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:background 0.3s;}
+  .dot.on{background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1s infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+  .wrap{padding:1rem;position:relative;z-index:1;max-width:600px;margin:0 auto;}
+  .hero{text-align:center;padding:1.5rem 1rem 1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:1rem;position:relative;overflow:hidden;}
+  .hero::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:sweep 2.5s infinite;}
+  @keyframes sweep{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+  .hero-label{font-size:11px;letter-spacing:0.16em;color:var(--muted);text-transform:uppercase;margin-bottom:2px;}
+  .hero-fps{font-size:80px;font-weight:700;line-height:1;font-family:var(--font-m);color:var(--accent);transition:color 0.4s;}
+  .hero-unit{font-size:17px;color:var(--muted);letter-spacing:0.1em;margin-top:3px;}
+  .hero-var{font-size:14px;margin-top:6px;font-family:var(--font-m);min-height:20px;}
+  .grid4{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:1rem;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem;}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.7rem 0.9rem;}
+  .stat .lbl{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;}
+  .stat .val{font-size:24px;font-weight:600;color:var(--text);font-family:var(--font-m);}
+  .val.up{color:var(--green);} .val.dn{color:var(--red);}
+  .controls{display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;}
+  .btn{flex:1;min-width:70px;padding:11px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--font-d);font-size:14px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all 0.15s;}
+  .btn:active{transform:scale(0.97);} .btn:disabled{opacity:0.32;cursor:not-allowed;}
+  .btn-go{border-color:var(--green);color:var(--green);}
+  .btn-stop{border-color:var(--red);color:var(--red);}
+  .btn-exp{border-color:var(--accent);color:var(--accent);}
+  .btn-clr{font-size:12px;flex:0;padding:11px 12px;}
+  .status{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-family:var(--font-m);font-size:12px;color:var(--muted);margin-bottom:1rem;min-height:36px;line-height:1.5;}
+  .ok{color:var(--green);} .err{color:var(--red);}
+  .notice{background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.2);border-radius:8px;padding:9px 13px;font-size:13px;color:var(--accent);margin-bottom:1rem;line-height:1.6;}
+  .spark-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.75rem 1rem;margin-bottom:1rem;}
+  .panel-title{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+  canvas#spark{width:100%;height:60px;display:block;}
+  .log-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:2rem;}
+  .log-head{display:grid;grid-template-columns:36px 60px 64px 56px 56px;gap:6px;padding:8px 12px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface2);}
+  .log-row{display:grid;grid-template-columns:36px 60px 64px 56px 56px;gap:6px;padding:9px 12px;border-bottom:1px solid rgba(30,45,69,0.5);font-size:13px;align-items:center;animation:fadeIn 0.2s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+  .log-row:last-child{border-bottom:none;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:99px;font-family:var(--font-m);font-size:13px;font-weight:600;}
+  .pill-hot{background:rgba(255,107,53,0.15);color:var(--accent2);border:1px solid rgba(255,107,53,0.3);}
+  .pill-ok{background:rgba(0,255,157,0.1);color:var(--green);border:1px solid rgba(0,255,157,0.25);}
+  .pill-cold{background:rgba(0,229,255,0.1);color:var(--accent);border:1px solid rgba(0,229,255,0.25);}
+  .log-scroll{max-height:340px;overflow-y:auto;}
+  .empty{text-align:center;padding:2.5rem 1rem;color:var(--muted);font-size:14px;}
+  .mono{font-family:var(--font-m);}
+</style>
+</head>
+<body>
+<div class="scanline"></div>
+<div class="header">
+  <div class="logo">VIRTUE<span> CHRONO</span></div>
+  <div class="sig"><div class="dot" id="dot"></div><span id="sig">OFFLINE</span></div>
+</div>
+<div class="wrap">
+
+  <div class="notice">
+    The picker will show <strong>only your Virtue Chrono</strong> — no need to identify it from a list.
+  </div>
+
+  <div class="hero">
+    <div class="hero-label">Velocity</div>
+    <div class="hero-fps" id="h-fps">—</div>
+    <div class="hero-unit">FPS</div>
+    <div class="hero-var" id="h-var"></div>
+  </div>
+
+  <div class="grid4">
+    <div class="stat"><div class="lbl">Average FPS</div><div class="val" id="s-avg">—</div></div>
+    <div class="stat"><div class="lbl">BPS</div><div class="val" id="s-bps">—</div></div>
+    <div class="stat"><div class="lbl">High FPS</div><div class="val" id="s-high">—</div></div>
+    <div class="stat"><div class="lbl">Low FPS</div><div class="val" id="s-low">—</div></div>
+  </div>
+
+  <div class="grid3">
+    <div class="stat"><div class="lbl">Shots</div><div class="val" id="s-count">0</div></div>
+    <div class="stat"><div class="lbl">Std Dev</div><div class="val" id="s-sd">—</div></div>
+    <div class="stat"><div class="lbl">FPS Range</div><div class="val" id="s-range">—</div></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-go" id="btn-scan" onclick="startScan()">Scan</button>
+    <button class="btn btn-stop" id="btn-stop" onclick="stopScan()" disabled>Stop</button>
+    <button class="btn btn-exp" onclick="exportLog()">Export</button>
+    <button class="btn btn-clr" onclick="clearAll()">Clear</button>
+  </div>
+
+  <div class="status" id="status">Ready — tap Scan, then select your Virtue Chrono from the picker</div>
+
+  <div class="spark-panel">
+    <div class="panel-title">FPS trend</div>
+    <canvas id="spark" height="60"></canvas>
+  </div>
+
+  <div class="log-panel">
+    <div class="log-head">
+      <span>#</span><span>Time</span><span>FPS</span><span>± prev</span><span>BPS</span>
+    </div>
+    <div class="log-scroll" id="log-scroll">
+      <div class="empty" id="empty-msg">No shots yet — start scanning and fire your marker</div>
+    </div>
+  </div>
+
+</div>
+<script>
+let device=null, shots=[], shotTimes=[];
+
+function setStatus(msg,state){
+  document.getElementById('status').innerHTML='<span class="'+(state==='ok'?'ok':state==='err'?'err':'')+'">'+msg+'</span>';
+  const dot=document.getElementById('dot'),sig=document.getElementById('sig');
+  if(state==='ok'){dot.className='dot on';sig.textContent='LIVE';}
+  else{dot.className='dot';sig.textContent=state==='err'?'ERROR':'OFFLINE';}
+}
+
+function decodeFps(buf){
+  if(!buf||buf.byteLength<10)return null;
+  const arr=new Uint8Array(buf);
+  const raw=arr[9];
+  if(raw===0)return null;
+  const fps=raw+80;
+  if(fps<150||fps>450)return null;
+  return fps;
+}
+
+function pillClass(fps){return fps>295?'pill-hot':fps<280?'pill-cold':'pill-ok';}
+
+function drawSparkline(){
+  const canvas=document.getElementById('spark');
+  const ctx=canvas.getContext('2d');
+  canvas.width=(canvas.offsetWidth||300)*window.devicePixelRatio;
+  canvas.height=60*window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio||1,window.devicePixelRatio||1);
+  const W=canvas.offsetWidth||300,H=60;
+  ctx.clearRect(0,0,W,H);
+  if(shots.length<2)return;
+  const min=Math.min(...shots)-5,max=Math.max(...shots)+5,range=max-min||1;
+  const pts=shots.map((v,i)=>({x:(i/(shots.length-1))*W,y:H-((v-min)/range)*(H-8)-4}));
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length;i++){
+    const mx=(pts[i-1].x+pts[i].x)/2;
+    ctx.bezierCurveTo(mx,pts[i-1].y,mx,pts[i].y,pts[i].x,pts[i].y);
+  }
+  ctx.strokeStyle='#00e5ff';ctx.lineWidth=2;ctx.stroke();
+  const avg=shots.reduce((a,b)=>a+b,0)/shots.length;
+  const ay=H-((avg-min)/range)*(H-8)-4;
+  ctx.beginPath();ctx.moveTo(0,ay);ctx.lineTo(W,ay);
+  ctx.strokeStyle='rgba(0,255,157,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.stroke();
+  ctx.setLineDash([]);
+  pts.forEach((p,i)=>{
+    ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);
+    ctx.fillStyle=shots[i]>295?'#ff6b35':shots[i]<280?'#00e5ff':'#00ff9d';
+    ctx.fill();
+  });
+}
+
+function updateStats(){
+  if(!shots.length)return;
+  const last=shots[shots.length-1];
+  const avg=shots.reduce((a,b)=>a+b,0)/shots.length;
+  const hi=Math.max(...shots),lo=Math.min(...shots);
+  const variance=shots.length>1?last-shots[shots.length-2]:null;
+  const sd=shots.length>1?Math.sqrt(shots.map(v=>Math.pow(v-avg,2)).reduce((a,b)=>a+b,0)/shots.length):null;
+  document.getElementById('h-fps').textContent=last;
+  document.getElementById('h-fps').style.color=last>295?'var(--accent2)':last<280?'var(--accent)':'var(--green)';
+  if(variance!==null){
+    const v=document.getElementById('h-var');
+    v.textContent=(variance>=0?'+':'')+variance+' fps from last shot';
+    v.style.color=variance>0?'var(--red)':variance<0?'var(--accent)':'var(--muted)';
+  }
+  document.getElementById('s-avg').textContent=avg.toFixed(1);
+  document.getElementById('s-high').textContent=hi;
+  document.getElementById('s-low').textContent=lo;
+  document.getElementById('s-count').textContent=shots.length;
+  document.getElementById('s-range').textContent=hi-lo;
+  if(sd!==null)document.getElementById('s-sd').textContent=sd.toFixed(1);
+  if(shotTimes.length>=2){
+    const intervals=[];
+    for(let i=1;i<shotTimes.length;i++)intervals.push(shotTimes[i]-shotTimes[i-1]);
+    const avgI=intervals.reduce((a,b)=>a+b,0)/intervals.length;
+    document.getElementById('s-bps').textContent=(1000/avgI).toFixed(2);
+  }
+  drawSparkline();
+}
+
+function addShot(fps){
+  const prevFps=shots.length?shots[shots.length-1]:null;
+  shots.push(fps);
+  shotTimes.push(Date.now());
+  const variance=prevFps!==null?fps-prevFps:null;
+  const varStr=variance!==null?(variance>=0?'+':'')+variance:'—';
+  let bpsStr='—';
+  if(shotTimes.length>=2){
+    const gap=shotTimes[shotTimes.length-1]-shotTimes[shotTimes.length-2];
+    bpsStr=(1000/gap).toFixed(1);
+  }
+  const timeStr=new Date().toLocaleTimeString('en-US',{hour12:false});
+  document.getElementById('empty-msg')&&document.getElementById('empty-msg').remove();
+  const row=document.createElement('div');
+  row.className='log-row';
+  row.innerHTML=
+    '<span class="mono" style="color:var(--muted)">'+shots.length+'</span>'+
+    '<span class="mono" style="font-size:11px;color:var(--muted)">'+timeStr+'</span>'+
+    '<span><span class="pill '+pillClass(fps)+'">'+fps+'</span></span>'+
+    '<span class="mono" style="color:'+(variance>0?'var(--red)':variance<0?'var(--accent)':'var(--muted)')+'">'+varStr+'</span>'+
+    '<span class="mono" style="color:var(--muted)">'+bpsStr+'</span>';
+  const scroll=document.getElementById('log-scroll');
+  scroll.insertBefore(row,scroll.firstChild);
+  updateStats();
+}
+
+async function startScan(){
+  if(!navigator.bluetooth){setStatus('Web Bluetooth not available — open this in Bluefy','err');return;}
+  try{
+    setStatus('Opening device picker — your Virtue Chrono should be the only option...','');
+    document.getElementById('btn-scan').disabled=true;
+
+    // Filter specifically for Nordic Semiconductor company ID 0x0059
+    // This means only the Virtue Chrono will appear in the picker
+    const d=await navigator.bluetooth.requestDevice({
+      filters:[{
+        manufacturerData:[{companyIdentifier:0x0059}]
+      }],
+      optionalServices:[]
+    });
+
+    device=d;
+    setStatus('<span class="ok">Connected to Virtue Chrono — fire your marker!</span>','ok');
+    document.getElementById('btn-stop').disabled=false;
+
+    d.addEventListener('advertisementreceived',e=>{
+      const mf=e.manufacturerData.get(0x0059);
+      if(mf){
+        const fps=decodeFps(mf.buffer);
+        if(fps)addShot(fps);
+      }
+    });
+
+    await d.watchAdvertisements();
+
+  }catch(err){
+    // If filter finds nothing, fall back to showing all devices
+    if(err.message&&err.message.includes('no devices')||err.name==='NotFoundError'){
+      setStatus('<span class="err">Chrono not found with filter — make sure it is powered on and try again</span>','err');
+    } else {
+      setStatus('Error: '+err.message,'err');
+    }
+    document.getElementById('btn-scan').disabled=false;
+  }
+}
+
+function stopScan(){
+  if(device){try{device.unwatchAdvertisements();}catch(e){}}
+  setStatus('Stopped. '+shots.length+' shots recorded.','');
+  document.getElementById('btn-scan').disabled=false;
+  document.getElementById('btn-stop').disabled=true;
+}
+
+function clearAll(){
+  shots=[];shotTimes=[];
+  document.getElementById('log-scroll').innerHTML='<div class="empty" id="empty-msg">No shots yet — start scanning and fire your marker</div>';
+  document.getElementById('h-fps').textContent='—';
+  document.getElementById('h-fps').style.color='var(--accent)';
+  document.getElementById('h-var').textContent='';
+  ['s-avg','s-bps','s-high','s-low','s-sd','s-range'].forEach(id=>document.getElementById(id).textContent='—');
+  document.getElementById('s-count').textContent='0';
+  const c=document.getElementById('spark');
+  c.getContext('2d').clearRect(0,0,c.width,c.height);
+}
+
+function exportLog(){
+  if(!shots.length){alert('No shots to export yet.');return;}
+  const rows=['shot,time,fps,variance,bps'];
+  shots.forEach((fps,i)=>{
+    const variance=i>0?fps-shots[i-1]:'—';
+    const bps=i>0&&shotTimes[i]-shotTimes[i-1]>0?(1000/(shotTimes[i]-shotTimes[i-1])).toFixed(2):'—';
+    rows.push([i+1,new Date(shotTimes[i]).toLocaleTimeString(),fps,variance,bps].join(','));
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
+  a.download='virtue_chrono_'+Date.now()+'.csv';
+  a.click();
+}
+
+window.addEventListener('resize',()=>{if(shots.length>1)drawSparkline();});
+</script>
+</body>
+</html>
